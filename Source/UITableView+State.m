@@ -23,14 +23,52 @@ static NSString * const kLoadMoreErrorIdentifier = @"kLoadMoreErrorIdentifier";
 
 #pragma mark - 注册视图
 
-- (void)setContentCell:(UIView *)cell {
-    objc_setAssociatedObject(self, @selector(contentCell), cell, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+- (void)setContentView:(UIView *)view {
+    objc_setAssociatedObject(self, @selector(contentView), view, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
-- (UITableViewCell *)contentCell {
-    UITableViewCell *cell = objc_getAssociatedObject(self, @selector(contentCell));
-    NSAssert(cell, @"没有设置 ContentCell，请调用 `setContentCell:` 方法");
-    return cell;
+- (UIView *)contentView {
+    return objc_getAssociatedObject(self, @selector(contentView));
+}
+
+- (void)setContentLoadingView:(UIView *)view {
+    objc_setAssociatedObject(self, @selector(contentLoadingView), view, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+- (UIView *)contentLoadingView {
+    return objc_getAssociatedObject(self, @selector(contentLoadingView));
+}
+
+- (void)setContentEmptyView:(UIView *)view {
+    objc_setAssociatedObject(self, @selector(contentEmptyView), view, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+- (UIView *)contentEmptyView {
+    return objc_getAssociatedObject(self, @selector(contentEmptyView));
+}
+
+- (void)setContentErrorView:(UIView *)view {
+    objc_setAssociatedObject(self, @selector(contentErrorView), view, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+- (UIView *)contentErrorView {
+    return objc_getAssociatedObject(self, @selector(contentErrorView));
+}
+
+- (void)setListEmptyView:(UIView *)view {
+    objc_setAssociatedObject(self, @selector(listEmptyView), view, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+- (UIView *)listEmptyView {
+    return objc_getAssociatedObject(self, @selector(listEmptyView));
+}
+
+- (void)setListErrorView:(UIView *)view {
+    objc_setAssociatedObject(self, @selector(listErrorView), view, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+- (UIView *)listErrorView {
+    return objc_getAssociatedObject(self, @selector(listErrorView));
 }
 
 - (void)registerListCell:(Class)cellClass {
@@ -54,8 +92,8 @@ static NSString * const kLoadMoreErrorIdentifier = @"kLoadMoreErrorIdentifier";
     [self registerClass:cellClass forCellReuseIdentifier:kLoadingCellIdentifier];
 }
 
-- (void)registerContentEmptyCellClass:(Class)cellClass {
-    [self registerClass:cellClass forCellReuseIdentifier:kContentEmptyCellIdentifier];
+- (void)registerContentEmptyViewClass:(Class)viewClass {
+    
 }
 
 - (void)registerListEmptyCellClass:(Class)cellClass {
@@ -80,6 +118,8 @@ static NSString * const kLoadMoreErrorIdentifier = @"kLoadMoreErrorIdentifier";
 
 #pragma mark - 数据存取
 
+#pragma mark 状态字典
+
 - (NSMutableDictionary<NSNumber *, NSString *> *)stateDictionary {
     NSMutableDictionary *dictionary = objc_getAssociatedObject(self, @selector(stateDictionary));
     if (!dictionary) {
@@ -91,6 +131,16 @@ static NSString * const kLoadMoreErrorIdentifier = @"kLoadMoreErrorIdentifier";
 
 - (void)setStateDictionary:(NSDictionary<NSNumber *, NSString *> *)stateDictionary {
     objc_setAssociatedObject(self, @selector(stateDictionary), stateDictionary, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+#pragma mark 视图class
+
+- (Class)contentEmptyViewClass {
+    return objc_getAssociatedObject(self, @selector(contentEmptyViewClass));
+}
+
+- (void)setContentEmptyViewClass:(Class)class {
+    objc_setAssociatedObject(self, @selector(contentEmptyViewClass), class, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
 #pragma mark - 高度计算
@@ -124,36 +174,65 @@ static NSString * const kLoadMoreErrorIdentifier = @"kLoadMoreErrorIdentifier";
 }
 
 - (void)render {
+    self.contentLoadingView.frame = self.bounds;
+    self.contentEmptyView.frame = self.bounds;
+    self.contentErrorView.frame = self.bounds;
+    
     [self reloadData];
     
     switch (self.currentState) {
         case UITableViewStateLoading:
             self.scrollEnabled = NO;
+            self.tableHeaderView = [self contentLoadingView];
             break;
         case UITableViewStateContent:
-        case UITableViewStateContentAndList:
         case UITableViewStateContentAndLoadMoreError:
-        case UITableViewStateContentAndListError:
-        case UITableViewStateContentAndListEmpty:
             self.scrollEnabled = YES;
-            self.tableHeaderView = [self contentCell];
+            self.tableHeaderView = [self contentView];
+            break;
+        case UITableViewStateContentAndListError: {
+            self.scrollEnabled = YES;
+            self.tableHeaderView = [self contentView];
+            UIView *emptyCell = [self listErrorView];
+            emptyCell.frame = CGRectMake(0, 0, [UIScreen mainScreen].bounds.size.width, 44);
+            self.tableFooterView = emptyCell;
+        }
+            break;
+        case UITableViewStateContentAndListEmpty: {
+            self.scrollEnabled = YES;
+            self.tableHeaderView = [self contentView];
+            UIView *emptyCell = [self listEmptyView];
+            emptyCell.frame = CGRectMake(0, 0, [UIScreen mainScreen].bounds.size.width, 44);
+            self.tableFooterView = emptyCell;
+        }
+            break;
         case UITableViewStateContentAndLoadingList:
         case UITableViewStateContentAndLoadingMore: {
             self.scrollEnabled = YES;
-            self.tableHeaderView = [self contentCell];
+            self.tableHeaderView = [self contentView];
             UITableViewCell *loadingView = [self __loadingCell];
             loadingView.frame = CGRectMake(0, 0, [UIScreen mainScreen].bounds.size.width, 44);
             self.tableFooterView = loadingView;
         }
             break;
-        case UITableViewStateContentAndLoadMoreEmpty: {
+        case UITableViewStateContentAndLoadMoreEnd: {
             self.scrollEnabled = YES;
-            self.tableHeaderView = [self contentCell];
+            self.tableHeaderView = [self contentView];
             UILabel *emptyLabel = [[UILabel alloc] init];
             emptyLabel.text = @"没有更多内容了";
+            emptyLabel.font = [UIFont systemFontOfSize:12];
+            emptyLabel.textColor = [UIColor lightGrayColor];
             emptyLabel.textAlignment = NSTextAlignmentCenter;
             emptyLabel.frame = CGRectMake(0, 0, [UIScreen mainScreen].bounds.size.width, 44);
             self.tableFooterView = emptyLabel;
+        }
+            break;
+        case UITableViewStateEmpty: {
+            self.tableHeaderView = [self contentEmptyView];
+        }
+            break;
+        case UITableViewStateError: {
+            self.tableHeaderView = [self contentErrorView];
         }
             break;
         default:
@@ -166,26 +245,29 @@ static NSString * const kLoadMoreErrorIdentifier = @"kLoadMoreErrorIdentifier";
 
 - (NSUInteger)handleNumberOfSections {
     switch (self.currentState) {
+        case UITableViewStateNone:
+            return 0;
         case UITableViewStateLoading:
         case UITableViewStateEmpty:
         case UITableViewStateError:
         case UITableViewStateContent:
-            return 1;
+            return 0;
         case UITableViewStateContentAndLoadingList:
             return 0;
-        case UITableViewStateContentAndList:
-            NSAssert(NO, @"不应该执行到这里");
         case UITableViewStateContentAndLoadingMore:
-        case UITableViewStateContentAndLoadMoreEmpty:
+        case UITableViewStateContentAndLoadMoreEnd:
         case UITableViewStateContentAndLoadMoreError:
+            return 1;
         case UITableViewStateContentAndListError:
         case UITableViewStateContentAndListEmpty:
-            return 1;
+            return 0;
     }
 }
 
 - (NSUInteger)handleHeightForCellAtIndexPath:(NSIndexPath *)indexPath {
     switch (self.currentState) {
+        case UITableViewStateNone:
+            return 0;
         case UITableViewStateLoading:
         case UITableViewStateEmpty:
         case UITableViewStateError:
@@ -194,9 +276,8 @@ static NSString * const kLoadMoreErrorIdentifier = @"kLoadMoreErrorIdentifier";
             return 0;
         case UITableViewStateContentAndLoadingList:
             return 44;
-        case UITableViewStateContentAndList:
         case UITableViewStateContentAndLoadingMore:
-        case UITableViewStateContentAndLoadMoreEmpty:
+        case UITableViewStateContentAndLoadMoreEnd:
         case UITableViewStateContentAndLoadMoreError:
             return [self calculateListCellHeightBlock](indexPath);
         case UITableViewStateContentAndListEmpty:
@@ -207,18 +288,20 @@ static NSString * const kLoadMoreErrorIdentifier = @"kLoadMoreErrorIdentifier";
 
 - (NSUInteger)handleNumberOfRowsInSection:(NSUInteger)section {
     switch (self.currentState) {
+        case UITableViewStateNone:
+            return 0;
         case UITableViewStateLoading:
+            return 1;
         case UITableViewStateEmpty:
         case UITableViewStateError:
         case UITableViewStateContent:
+            return 0;
         case UITableViewStateContentAndLoadingList:
             return 1;
-        case UITableViewStateContentAndList:
-            return 2;
         case UITableViewStateContentAndListEmpty:
         case UITableViewStateContentAndListError:
         case UITableViewStateContentAndLoadingMore:
-        case UITableViewStateContentAndLoadMoreEmpty:
+        case UITableViewStateContentAndLoadMoreEnd:
         case UITableViewStateContentAndLoadMoreError:
             return 1;
     }
@@ -226,6 +309,8 @@ static NSString * const kLoadMoreErrorIdentifier = @"kLoadMoreErrorIdentifier";
 
 - (UITableViewCell *)handleCellWithIdentifier:(NSString *)identifier forIndexPath:(NSIndexPath *)indexPath {
     switch (self.currentState) {
+        case UITableViewStateNone:
+            return [[UITableViewCell alloc] init];
         case UITableViewStateLoading: {
             return [self __loadingCell];
         }
@@ -233,16 +318,13 @@ static NSString * const kLoadMoreErrorIdentifier = @"kLoadMoreErrorIdentifier";
             return [self __contentErrorCell];
         }
         case UITableViewStateContent: {
-            return [self contentCell];
+            return [[UITableViewCell alloc] init];
         }
         case UITableViewStateEmpty: {
-            return [self __contentEmptyCell];
+            return [[UITableViewCell alloc] init];
         }
         case UITableViewStateContentAndLoadingList: {
             return [self __loadingCell];
-        }
-        case UITableViewStateContentAndList: {
-            return [self dequeueReusableCellWithIdentifier:kListCellIdentifier forIndexPath:indexPath];
         }
         case UITableViewStateContentAndListEmpty: {
             return [self dequeueReusableCellWithIdentifier:kListCellIdentifier forIndexPath:indexPath];
@@ -253,7 +335,7 @@ static NSString * const kLoadMoreErrorIdentifier = @"kLoadMoreErrorIdentifier";
         case UITableViewStateContentAndLoadingMore: {
             return [self dequeueReusableCellWithIdentifier:kListCellIdentifier forIndexPath:indexPath];
         }
-        case UITableViewStateContentAndLoadMoreEmpty: {
+        case UITableViewStateContentAndLoadMoreEnd: {
             return [self dequeueReusableCellWithIdentifier:kListCellIdentifier forIndexPath:indexPath];
         }
         case UITableViewStateContentAndLoadMoreError: {
@@ -272,14 +354,19 @@ static NSString * const kLoadMoreErrorIdentifier = @"kLoadMoreErrorIdentifier";
     return cell;
 }
 
-- (UITableViewCell *)__contentEmptyCell {
-    UITableViewCell *cell = [self dequeueReusableCellWithIdentifier:kContentEmptyCellIdentifier];
-    NSAssert(cell, @"没有注册 ContentEmpty 状态的 Cell，请调用 `registerContentEmptyCellClass:` 方法");
-    return cell;
+- (UIView *)__contentEmptyView {
+    Class class = [self contentEmptyViewClass];
+    NSAssert(class, @"没有注册 ContentEmpty 状态的 View，请调用 `registerContentEmptyViewClass:` 方法");
+    
+    UIView *view = [[class alloc] init];
+    view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    return view;
 }
 
 - (UITableViewCell *)__listEmptyCell {
-    return nil;
+    UITableViewCell *cell = [self dequeueReusableCellWithIdentifier:kListEmptyCellIdentifier];
+    NSAssert(cell, @"没有注册 Loading 状态的 Cell，请调用 `registerLoadingCellClass:` 方法");
+    return cell;
 }
 
 - (UITableViewCell *)__loadMoreEmptyCell {

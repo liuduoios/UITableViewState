@@ -9,17 +9,17 @@
 #import <UIKit/UIKit.h>
 
 typedef NS_ENUM(NSUInteger, UITableViewState) {
-    UITableViewStateLoading,
+    UITableViewStateNone = -1,
+    UITableViewStateLoading = 0,
     UITableViewStateContent,
     UITableViewStateEmpty,
     UITableViewStateError,
     UITableViewStateContentAndLoadingList,
-    UITableViewStateContentAndList,
     UITableViewStateContentAndListEmpty,
     UITableViewStateContentAndListError,
     UITableViewStateContentAndLoadingMore,
     UITableViewStateContentAndLoadMoreError,
-    UITableViewStateContentAndLoadMoreEmpty
+    UITableViewStateContentAndLoadMoreEnd
 };
 
 @interface UITableView (State)
@@ -29,20 +29,40 @@ typedef NS_ENUM(NSUInteger, UITableViewState) {
 - (UITableViewState)currentState;
 - (void)switchState:(UITableViewState)state;
 
-- (void)setContentCell:(UIView *)cell;
-- (void)registerListCell:(Class)cellClass;
-- (void)registerCell:(Class)cellClass forState:(UITableViewState)state;
+- (void)registerLoadingCellClass:(Class)cellClass;
+
+#pragma mark - Content
+
+- (void)setContentView:(UIView *)view;
+- (UIView *)contentView;
+
+- (void)setContentLoadingView:(UIView *)view;
+- (UIView *)contentLoadingView;
+
+- (void)setContentEmptyView:(UIView *)view;
+- (UIView *)contentEmptyView;
+
+- (void)setContentErrorView:(UIView *)view;
+- (UIView *)contentErrorView;
 
 - (void)setCalculateContentCellHeightBlock:(CGFloat (^)(UITableViewCell *))calculateHeightBlock;
-- (void)setCalculateListCellHeightBlock:(CGFloat (^)(NSIndexPath *))calculateHeightBlock;
 
-- (void)registerLoadingCellClass:(Class)cellClass;
-- (void)registerContentEmptyCellClass:(Class)cellClass;
-- (void)registerListEmptyCellClass:(Class)cellClass;
-- (void)registerContentErrorCellClass:(Class)cellClass;
-- (void)registerListErrorCellClass:(Class)cellClass;
+#pragma mark - List
+
+- (void)registerListCell:(Class)cellClass;
+
+- (void)setListEmptyView:(UIView *)view;
+- (UIView *)listEmptyView;
+
+- (void)setListErrorView:(UIView *)view;
+- (UIView *)listErrorView;
+
 - (void)registerLoadMoreEmptyCellClass:(Class)cellClass;
 - (void)registerLoadMoreErrorCellClass:(Class)cellClass;
+
+- (void)setCalculateListCellHeightBlock:(CGFloat (^)(NSIndexPath *))calculateHeightBlock;
+
+#pragma mark -
 
 - (NSUInteger)handleNumberOfSections;
 - (NSUInteger)handleNumberOfRowsInSection:(NSUInteger)section;
